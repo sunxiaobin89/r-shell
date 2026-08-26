@@ -157,7 +157,8 @@
       "proxyPort": "代理端口",
       "proxyUsername": "可选",
       "proxyPassword": "可选",
-      "domain": "WORKGROUP"
+      "domain": "WORKGROUP",
+      "savedPassword": "留空保持已保存的密码"
     },
     "authMethod": {
       "password": "密码",
@@ -232,7 +233,11 @@
       "connectionFailed": "连接失败",
       "connectionFailedDesc": "无法连接到服务器，请检查您的凭据并重试。",
       "connectionError": "连接错误",
-      "connectionErrorDesc": "连接时发生意外错误。"
+      "connectionErrorDesc": "连接时发生意外错误。",
+      "credentialSyncFailed": "加密并保存凭据失败"
+    },
+    "hint": {
+      "savedPasswordKept": "此连接已保存密码。留空保持不变，输入新密码即可替换。"
     }
   },
   "settings": {

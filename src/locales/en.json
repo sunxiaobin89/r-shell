@@ -157,7 +157,8 @@
       "proxyPort": "Proxy Port",
       "proxyUsername": "Optional",
       "proxyPassword": "Optional",
-      "domain": "WORKGROUP"
+      "domain": "WORKGROUP",
+      "savedPassword": "Leave blank to keep saved password"
     },
     "authMethod": {
       "password": "Password",
@@ -232,7 +233,11 @@
       "connectionFailed": "Connection Failed",
       "connectionFailedDesc": "Unable to connect to the server. Please check your credentials and try again.",
       "connectionError": "Connection Error",
-      "connectionErrorDesc": "An unexpected error occurred while connecting."
+      "connectionErrorDesc": "An unexpected error occurred while connecting.",
+      "credentialSyncFailed": "Failed to encrypt and save the credentials"
+    },
+    "hint": {
+      "savedPasswordKept": "A password is saved for this connection. Leave the field blank to keep it, or type a new password to replace it."
     }
   },
   "settings": {

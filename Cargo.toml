@@ -1,0 +1,15 @@
+[workspace]
+# Phase 0 groundwork: prepare the backend for extraction into shared crates
+# so the Tauri shell and a future GPUI shell can both depend on them.
+#
+# This file currently only registers the existing Tauri package. No code has
+# moved yet — the point is to prove the workspace layout does not break the
+# Tauri build before anything is reshuffled. Extracted crates will be added
+# under crates/ as they land.
+members = ["src-tauri"]
+resolver = "2"
+
+[workspace.package]
+version = "3.0.0"
+edition = "2021"
+license = "MIT"

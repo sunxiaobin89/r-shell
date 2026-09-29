@@ -665,7 +665,7 @@ mod shell_integration_tests {
 
         // The exact production resolution for an empty key path.
         let resolved =
-            crate::os_keypath::resolve_private_key_path(None).expect("default key resolves");
+            rshell_net::os_keypath::resolve_private_key_path(None).expect("default key resolves");
         assert_eq!(
             resolved,
             ssh_dir.join("id_rsa").to_string_lossy(),

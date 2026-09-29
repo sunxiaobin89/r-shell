@@ -6,7 +6,7 @@
 # moved yet — the point is to prove the workspace layout does not break the
 # Tauri build before anything is reshuffled. Extracted crates will be added
 # under crates/ as they land.
-members = ["src-tauri"]
+members = ["src-tauri", "crates/rshell-net"]
 resolver = "2"
 
 [workspace.package]

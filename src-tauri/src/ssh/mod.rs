@@ -1,5 +1,5 @@
-use crate::proxy::ProxyConfig;
 use anyhow::Result;
+use rshell_net::proxy::ProxyConfig;
 use russh::keys::*;
 use russh::*;
 use russh_sftp::client::SftpSession;
@@ -495,7 +495,7 @@ async fn authenticate_session(
         } => {
             // Expand tilde in path — use dirs::home_dir() for cross-platform
             // support (HOME is not set on Windows; USERPROFILE is used instead).
-            let expanded_path = crate::os_keypath::expand_tilde(key_path);
+            let expanded_path = rshell_net::os_keypath::expand_tilde(key_path);
 
             // Check if file exists
             if !std::path::Path::new(&expanded_path).exists() {
@@ -768,7 +768,7 @@ impl SshClient {
         } else if let Some(proxy) = &config.proxy {
             // Tunnel through the proxy first, then hand the established stream
             // to russh so the SSH handshake runs over the tunnel.
-            let stream = crate::proxy::connect_via_proxy(
+            let stream = rshell_net::proxy::connect_via_proxy(
                 proxy,
                 &config.host,
                 config.port,

@@ -1,11 +1,11 @@
 use crate::connection_manager::ConnectionManager;
 use crate::ftp_client::FtpConfig;
 use crate::os_detect::{self, OsInfo};
-use crate::os_keypath::resolve_private_key_path;
-use crate::proxy::{ProxyConfig, ProxyType};
 use crate::sftp_client::{FileEntry, FileEntryType, SftpAuthMethod, SftpConfig};
 use crate::sftp_transfer;
 use crate::ssh::{AuthMethod, HostKeyChanged, HostKeyPolicy, SshConfig, TunnelConfig};
+use rshell_net::os_keypath::resolve_private_key_path;
+use rshell_net::proxy::{ProxyConfig, ProxyType};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Instant;

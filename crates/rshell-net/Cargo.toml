@@ -1,0 +1,13 @@
+[package]
+name = "rshell-net"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Connection primitives shared by the Tauri and GPUI shells: proxy transport and remote key path resolution"
+
+[dependencies]
+anyhow = "1"
+base64 = "0.22"
+dirs = "6"
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["io-util", "net", "rt", "sync", "time"] }

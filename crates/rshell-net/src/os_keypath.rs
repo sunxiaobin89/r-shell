@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// Resolves the configured SSH private key path or falls back to the user's default key.
 ///
@@ -14,7 +14,10 @@ pub fn resolve_private_key_path(key_path: Option<&str>) -> Result<String, String
     resolve_private_key_path_with_home(key_path, &home)
 }
 
-fn resolve_private_key_path_with_home(key_path: Option<&str>, home: &Path) -> Result<String, String> {
+fn resolve_private_key_path_with_home(
+    key_path: Option<&str>,
+    home: &Path,
+) -> Result<String, String> {
     if let Some(path) = key_path.map(str::trim).filter(|path| !path.is_empty()) {
         return Ok(expand_tilde_with_home(path, home));
     }
@@ -37,7 +40,7 @@ fn resolve_private_key_path_with_home(key_path: Option<&str>, home: &Path) -> Re
 
 // Expand tilde in path — use dirs::home_dir() for cross-platform
 // support (HOME is not set on Windows; USERPROFILE is used instead).
-pub(crate) fn expand_tilde(key_path: &str) -> String {
+pub fn expand_tilde(key_path: &str) -> String {
     match dirs::home_dir() {
         Some(home) => expand_tilde_with_home(key_path, &home),
         None => key_path.to_string(),
@@ -56,16 +59,14 @@ fn expand_tilde_with_home(key_path: &str, home: &Path) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
     use super::*;
     use std::fs;
 
     /// Fresh temp directory used as a fake `$HOME` (unique per test).
     fn test_home(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!(
-            "r-shell-keypath-{}-{}",
-            std::process::id(),
-            name
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("r-shell-keypath-{}-{}", std::process::id(), name));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         dir
@@ -81,7 +82,10 @@ mod tests {
     #[test]
     fn explicit_path_is_expanded_and_trimmed() {
         let home = test_home("explicit");
-        assert_eq!(resolve_private_key_path_with_home(Some("/abs/key"), &home).unwrap(), "/abs/key");
+        assert_eq!(
+            resolve_private_key_path_with_home(Some("/abs/key"), &home).unwrap(),
+            "/abs/key"
+        );
         assert_eq!(
             resolve_private_key_path_with_home(Some("  ~/keys/k1  "), &home).unwrap(),
             // Tilde expansion is textual (replacen), so the input's own
@@ -121,8 +125,14 @@ mod tests {
     fn no_default_key_returns_error_listing_candidates() {
         let home = test_home("no-default");
         let err = resolve_private_key_path_with_home(None, &home).unwrap_err();
-        assert!(err.contains("No default SSH private key found"), "unexpected error: {err}");
-        assert!(err.contains("id_rsa") && err.contains("id_ed25519"), "error should list both candidates: {err}");
+        assert!(
+            err.contains("No default SSH private key found"),
+            "unexpected error: {err}"
+        );
+        assert!(
+            err.contains("id_rsa") && err.contains("id_ed25519"),
+            "error should list both candidates: {err}"
+        );
     }
 
     #[test]
@@ -131,12 +141,21 @@ mod tests {
         // Tilde expansion is textual (replacen), so the input's separator is
         // kept: assert the exact textual output, not a PathBuf-joined path
         // (on Windows the latter would normalize '/' to '\\').
-        assert_eq!(expand_tilde_with_home("~/foo", &home), format!("{}/foo", home.to_string_lossy()));
-        assert_eq!(expand_tilde_with_home("~\\foo", &home), format!("{}\\foo", home.to_string_lossy()));
+        assert_eq!(
+            expand_tilde_with_home("~/foo", &home),
+            format!("{}/foo", home.to_string_lossy())
+        );
+        assert_eq!(
+            expand_tilde_with_home("~\\foo", &home),
+            format!("{}\\foo", home.to_string_lossy())
+        );
         // Only a leading "~/" or "~\" is expanded — a bare "~" or a mid-path
         // tilde is left untouched (matches the pre-PR behavior).
         assert_eq!(expand_tilde_with_home("~", &home), "~");
         assert_eq!(expand_tilde_with_home("a/~", &home), "a/~");
-        assert_eq!(expand_tilde_with_home("relative/path", &home), "relative/path");
+        assert_eq!(
+            expand_tilde_with_home("relative/path", &home),
+            "relative/path"
+        );
     }
 }

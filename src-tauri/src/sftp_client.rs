@@ -140,7 +140,7 @@ async fn authenticate_sftp_session(
             key_path,
             passphrase,
         } => {
-            let expanded_path = crate::os_keypath::expand_tilde(key_path);
+            let expanded_path = rshell_net::os_keypath::expand_tilde(key_path);
 
             if !std::path::Path::new(&expanded_path).exists() {
                 return Err(anyhow::anyhow!(

@@ -113,6 +113,74 @@ mod tests {
         client_write.disconnect().await.ok();
     }
 
+    /// Public-key auth end-to-end, deliberately using a `~`-prefixed key path
+    /// so it only passes when `expand_tilde` still resolves one. That function
+    /// moved from `src-tauri/src/os_keypath.rs` into the `rshell-net` crate in
+    /// the Phase 0 extraction, so this is the regression test for that move —
+    /// it exercises the same code path the app takes on a key-auth connect.
+    ///
+    /// Needs a key-auth SSH server. Start a throwaway one with:
+    ///
+    ///   docker run -d --name rshell-ssh-test -p 2222:22 \
+    ///     -v ~/.ssh/id_rsa.pub:/tmp/authorized_key:ro \
+    ///     alpine:3.20 sh -c 'apk add --no-cache openssh && ssh-keygen -A &&
+    ///       mkdir -p /root/.ssh && cp /tmp/authorized_key /root/.ssh/authorized_keys &&
+    ///       chmod 700 /root/.ssh && chmod 600 /root/.ssh/authorized_keys &&
+    ///       exec /usr/sbin/sshd -D -e'
+    ///
+    /// Run with: cargo test -p r-shell -- --ignored test_public_key_auth_via_tilde_path
+    /// Endpoint overridable via RSHELL_KEY_AUTH_HOST / RSHELL_KEY_AUTH_PORT.
+    #[tokio::test]
+    #[ignore]
+    async fn test_public_key_auth_via_tilde_path() {
+        let host =
+            std::env::var("RSHELL_KEY_AUTH_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+        let port: u16 = std::env::var("RSHELL_KEY_AUTH_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(2222);
+
+        let config = SshConfig {
+            host,
+            port,
+            username: "root".to_string(),
+            // The tilde is the whole point: this string is handed to
+            // rshell_net::os_keypath::expand_tilde during authentication.
+            auth_method: AuthMethod::PublicKey {
+                key_path: "~/.ssh/id_rsa".to_string(),
+                passphrase: None,
+            },
+            compression: true,
+            keepalive_interval: None,
+            keepalive_max: None,
+            proxy: None,
+            // `Off` so the test never reads or writes the developer's real
+            // ~/.ssh/known_hosts: the default `Strict` records the throwaway
+            // container's key there, and every rebuilt container would then
+            // fail with HOST KEY CHANGED.
+            host_key_policy: crate::ssh::HostKeyPolicy::Off,
+            connect_timeout: 10,
+            tunnel: None,
+        };
+
+        let mut client = SshClient::new();
+        client
+            .connect(&config)
+            .await
+            .expect("public-key connect with a ~-prefixed key path failed");
+
+        let output = client
+            .execute_command("echo KEY_AUTH_OK")
+            .await
+            .expect("command execution after key auth failed");
+        assert!(
+            output.contains("KEY_AUTH_OK"),
+            "unexpected command output: {output}"
+        );
+
+        client.disconnect().await.ok();
+    }
+
     #[tokio::test]
     #[ignore]
     async fn test_invalid_credentials() {

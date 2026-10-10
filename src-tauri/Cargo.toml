@@ -59,29 +59,3 @@ socket2 = "0.5"
 tempfile = "3"
 env_logger = "0.11"
 rand = "0.10"
-
-# Performance optimization profiles
-[profile.release]
-opt-level = 3          # Maximum optimization
-lto = true             # Link-time optimization
-codegen-units = 1      # Better optimization, slower compile
-strip = true           # Strip debug symbols
-panic = "abort"        # Smaller binary size
-
-[profile.dev]
-opt-level = 0          # No optimization for faster compile
-debug = true           # Include debug info
-
-# Keep dependencies optimized in dev builds: at opt-level 0 the SSH crypto
-# stack caps transfer throughput at a few MB/s no matter how fast the
-# transfer engine is. The r-shell crate itself stays unoptimized, so
-# incremental rebuilds during `pnpm tauri dev` remain fast.
-[profile.dev.package."*"]
-opt-level = 3
-
-# Optional: Super optimized release
-[profile.release-optimized]
-inherits = "release"
-opt-level = "z"        # Optimize for size
-lto = "fat"            # Aggressive LTO
-codegen-units = 1

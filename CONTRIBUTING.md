@@ -77,9 +77,8 @@ pnpm tauri dev
 # Run frontend tests
 pnpm test
 
-# Run Rust tests
-cd src-tauri
-cargo test
+# Run Rust tests (from the repo root — src-tauri is a workspace member)
+cargo test --workspace
 
 # Run E2E tests (configure credentials first)
 pnpm playwright test

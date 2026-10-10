@@ -18,12 +18,14 @@ import {
   collectFileVersions,
   findVersionDrift,
   updateCargoLock,
+  updateWorkspaceVersion,
   parseReleaseTag,
   verifyTagAgainstFiles,
 } from '../lib/version-bump.mjs';
 
 const SYNCED_FILES = {
   packageJson: JSON.stringify({ name: 'r-shell', version: '2.7.0' }),
+  workspaceToml: '[workspace]\nmembers = ["src-tauri", "crates/rshell-net"]\n\n[workspace.package]\nversion = "2.7.0"\n',
   cargoToml: '[package]\nname = "r-shell"\nversion = "2.7.0"\n',
   cargoLock: 'version = 4\n\n[[package]]\nname = "r-shell"\nversion = "2.7.0"\ndependencies = []\n',
   tauriConf: JSON.stringify({ productName: 'r-shell', version: '2.7.0' }),
@@ -170,11 +172,12 @@ describe('version file readers', () => {
 });
 
 describe('collectFileVersions / findVersionDrift', () => {
-  it('collects all four versions', () => {
+  it('collects all five versions', () => {
     expect(collectFileVersions(SYNCED_FILES)).toEqual({
       'package.json': '2.7.0',
+      'Cargo.toml': '2.7.0',
       'src-tauri/Cargo.toml': '2.7.0',
-      'src-tauri/Cargo.lock': '2.7.0',
+      'Cargo.lock': '2.7.0',
       'src-tauri/tauri.conf.json': '2.7.0',
     });
   });
@@ -197,17 +200,36 @@ describe('collectFileVersions / findVersionDrift', () => {
 });
 
 describe('updateCargoLock', () => {
-  it('rewrites only the root package version', () => {
-    const lock = '[[package]]\nname = "adler2"\nversion = "2.0.1"\n\n[[package]]\nname = "r-shell"\nversion = "2.7.0"\n';
+  it('rewrites every local package version and leaves registry deps alone', () => {
+    const lock =
+      '[[package]]\nname = "adler2"\nversion = "2.0.1"\nsource = "registry+https://github.com/rust-lang/crates.io-index"\n\n' +
+      '[[package]]\nname = "r-shell"\nversion = "2.7.0"\ndependencies = []\n\n' +
+      '[[package]]\nname = "rshell-net"\nversion = "2.7.0"\ndependencies = []\n';
     const updated = updateCargoLock(lock, '2.8.0-beta.1');
     expect(updated).toContain('name = "r-shell"\nversion = "2.8.0-beta.1"');
+    expect(updated).toContain('name = "rshell-net"\nversion = "2.8.0-beta.1"');
     expect(updated).toContain('name = "adler2"\nversion = "2.0.1"');
   });
 
-  it('throws when the root package entry is missing', () => {
-    expect(() => updateCargoLock('[[package]]\nname = "adler2"\nversion = "2.0.1"\n', '2.8.0')).toThrow(
-      'not found'
-    );
+  it('throws when no local package entry is present', () => {
+    const registryOnly =
+      '[[package]]\nname = "adler2"\nversion = "2.0.1"\nsource = "registry+https://github.com/rust-lang/crates.io-index"\n';
+    expect(() => updateCargoLock(registryOnly, '2.8.0')).toThrow('local workspace package entry');
+  });
+});
+
+describe('updateWorkspaceVersion', () => {
+  it('rewrites [workspace.package] version and leaves the rest alone', () => {
+    const toml =
+      '[workspace]\nmembers = ["src-tauri", "crates/rshell-net"]\nresolver = "2"\n\n[workspace.package]\nversion = "2.7.0"\nedition = "2021"\n';
+    const updated = updateWorkspaceVersion(toml, '2.8.0');
+    expect(updated).toContain('[workspace.package]\nversion = "2.8.0"');
+    expect(updated).toContain('edition = "2021"');
+    expect(updated).toContain('resolver = "2"');
+  });
+
+  it('throws when the [workspace.package] entry is missing', () => {
+    expect(() => updateWorkspaceVersion('[workspace]\nmembers = []\n', '2.8.0')).toThrow('not found');
   });
 });
 
@@ -430,7 +452,7 @@ describe('verify-release-tag (verifyTagAgainstFiles)', () => {
   it('reports every mismatched file for a prerelease tag', () => {
     const result = verifyTagAgainstFiles('v2.8.0-beta.1', SYNCED_FILES);
     expect(result.ok).toBe(false);
-    expect(result.mismatches).toHaveLength(4);
+    expect(result.mismatches).toHaveLength(5);
     expect(result.mismatches[0].file).toBe('package.json');
     expect(result.mismatches[0].expectedTagVersion).toBe('2.8.0-beta.1');
     expect(result.mismatches[0].fileVersion).toBe('2.7.0');

@@ -33,7 +33,9 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          # target/ and Cargo.lock both live at the repo root now that
+          # src-tauri is a workspace member.
+          workspaces: '.'
 
       - name: Install dependencies (macOS)
         if: matrix.platform == 'macos-latest'
@@ -67,17 +69,14 @@ jobs:
         run: pnpm tsc --noEmit
 
       - name: Run Rust tests
-        working-directory: src-tauri
-        run: cargo test
+        run: cargo test --workspace
 
       - name: Run Rust clippy
-        working-directory: src-tauri
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --workspace -- -D warnings
         continue-on-error: true
 
       - name: Check Rust formatting
-        working-directory: src-tauri
-        run: cargo fmt --check
+        run: cargo fmt --all --check
         continue-on-error: true
 
   # Lightweight i18n key-parity check. Pure Node.js — no Rust/Tauri deps needed,

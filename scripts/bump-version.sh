@@ -97,6 +97,22 @@ else
   sed -i "s/^version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" src-tauri/Cargo.toml
 fi
 
+# Update root Cargo.toml workspace version — crates declaring
+# `version.workspace = true` inherit it, so it must track the app version.
+echo -e "${BLUE}Updating Cargo.toml (workspace root)...${NC}"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  sed -i '' "s/^version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" Cargo.toml
+else
+  sed -i "s/^version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" Cargo.toml
+fi
+
+# The sed above silently matches nothing when the root version has drifted
+# from package.json, so verify the rewrite actually landed.
+if ! grep -q "^version = \"$NEW_VERSION\"" Cargo.toml; then
+  echo -e "${RED}✗ Cargo.toml (workspace root) does not declare $NEW_VERSION — it drifted from package.json ($CURRENT_VERSION).${NC}"
+  exit 1
+fi
+
 # Update src-tauri/tauri.conf.json
 echo -e "${BLUE}Updating src-tauri/tauri.conf.json...${NC}"
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -106,7 +122,7 @@ else
 fi
 
 # Update Cargo.lock by building
-echo -e "${BLUE}Updating src-tauri/Cargo.lock...${NC}"
+echo -e "${BLUE}Updating Cargo.lock...${NC}"
 cd src-tauri
 cargo build --quiet 2>/dev/null || true
 cd ..
@@ -155,7 +171,7 @@ fi
 if [ "$NO_COMMIT" = false ]; then
   echo -e "${BLUE}Creating git commit...${NC}"
   
-  git add package.json src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json
+  git add package.json Cargo.lock Cargo.toml src-tauri/Cargo.toml src-tauri/tauri.conf.json
   
   if [ "$SKIP_CHANGELOG" = false ]; then
     git add CHANGELOG.md
@@ -175,8 +191,9 @@ else
   echo -e "${GREEN}✓ Version bumped to ${NEW_VERSION}${NC}"
   echo -e "${YELLOW}Files modified (not committed):${NC}"
   echo -e "  - package.json"
+  echo -e "  - Cargo.toml"
   echo -e "  - src-tauri/Cargo.toml"
-  echo -e "  - src-tauri/Cargo.lock"
+  echo -e "  - Cargo.lock"
   echo -e "  - src-tauri/tauri.conf.json"
   if [ "$SKIP_CHANGELOG" = false ]; then
     echo -e "  - CHANGELOG.md"

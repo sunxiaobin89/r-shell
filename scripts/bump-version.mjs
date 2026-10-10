@@ -35,8 +35,9 @@
  * `version:stable`, while stable releases use `version:patch|minor|major`.
  *
  * Preflight guardrails (fail fast, like semantic-release):
- *   - All four version files (package.json, Cargo.toml, Cargo.lock,
- *     tauri.conf.json) must agree on the current version before a bump.
+ *   - All five version files (package.json, Cargo.toml, src-tauri/Cargo.toml,
+ *     Cargo.lock, src-tauri/tauri.conf.json) must agree on the current version
+ *     before a bump.
  *   - The working tree must be clean of tracked modifications, so the bump
  *     commit contains exactly the version change and nothing else.
  * Both can be bypassed with `--force` when you know what you are doing.
@@ -62,6 +63,7 @@ import {
   findVersionDrift,
   parseCargoLockVersion,
   updateCargoLock,
+  updateWorkspaceVersion,
   updateChangelog
 } from '../src/lib/version-bump.mjs';
 
@@ -227,15 +229,17 @@ function main() {
   const rootDir = process.cwd();
   const paths = {
     packageJson: path.join(rootDir, 'package.json'),
+    workspaceToml: path.join(rootDir, 'Cargo.toml'),
     cargoToml: path.join(rootDir, 'src-tauri', 'Cargo.toml'),
-    cargoLock: path.join(rootDir, 'src-tauri', 'Cargo.lock'),
+    cargoLock: path.join(rootDir, 'Cargo.lock'),
     tauriConf: path.join(rootDir, 'src-tauri', 'tauri.conf.json'),
     changelog: path.join(rootDir, 'CHANGELOG.md')
   };
 
-  // --- Preflight: versions must agree across all four files ---
+  // --- Preflight: versions must agree across all five files ---
   const contents = {
     packageJson: fs.readFileSync(paths.packageJson, 'utf8'),
+    workspaceToml: fs.readFileSync(paths.workspaceToml, 'utf8'),
     cargoToml: fs.readFileSync(paths.cargoToml, 'utf8'),
     cargoLock: fs.readFileSync(paths.cargoLock, 'utf8'),
     tauriConf: fs.readFileSync(paths.tauriConf, 'utf8')
@@ -359,6 +363,16 @@ function performBump({ bumpType, channel, noCommit, skipChangelog, currentVersio
     cargoToml = cargoToml.replace(/^version = ".*"$/m, `version = "${newVersion}"`);
     fs.writeFileSync(paths.cargoToml, cargoToml);
 
+    // Update the workspace root Cargo.toml too: crates that declare
+    // `version.workspace = true` (crates/rshell-net) inherit its version, so
+    // leaving it behind would freeze them at the previous release.
+    log.info('Updating Cargo.toml (workspace root)...');
+    const workspaceToml = updateWorkspaceVersion(
+      fs.readFileSync(paths.workspaceToml, 'utf8'),
+      newVersion
+    );
+    fs.writeFileSync(paths.workspaceToml, workspaceToml);
+
     // Update tauri.conf.json
     log.info('Updating src-tauri/tauri.conf.json...');
     const tauriConf = JSON.parse(fs.readFileSync(paths.tauriConf, 'utf8'));
@@ -368,7 +382,7 @@ function performBump({ bumpType, channel, noCommit, skipChangelog, currentVersio
     // Update Cargo.lock - rewrite the root package version directly (like
     // `cargo set-version`), falling back to `cargo build` only when the root
     // package entry cannot be found, and verify the result either way.
-    log.info('Updating src-tauri/Cargo.lock...');
+    log.info('Updating Cargo.lock...');
     let cargoLock = fs.readFileSync(paths.cargoLock, 'utf8');
     try {
       cargoLock = updateCargoLock(cargoLock, newVersion);
@@ -408,7 +422,7 @@ function performBump({ bumpType, channel, noCommit, skipChangelog, currentVersio
     // Create git commit
     if (!noCommit) {
       log.info('Creating git commit...');
-      execSync('git add package.json src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json');
+      execSync('git add package.json Cargo.lock Cargo.toml src-tauri/Cargo.toml src-tauri/tauri.conf.json');
       if (!skipChangelog) {
         execSync('git add CHANGELOG.md');
       }
@@ -423,8 +437,9 @@ function performBump({ bumpType, channel, noCommit, skipChangelog, currentVersio
       log.success(`[OK] Version bumped to ${newVersion}`);
       log.warn('Files modified (not committed):');
       console.log('  - package.json');
+      console.log('  - Cargo.toml');
       console.log('  - src-tauri/Cargo.toml');
-      console.log('  - src-tauri/Cargo.lock');
+      console.log('  - Cargo.lock');
       console.log('  - src-tauri/tauri.conf.json');
       if (!skipChangelog) {
         console.log('  - CHANGELOG.md');

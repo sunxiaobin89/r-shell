@@ -10,4 +10,4 @@ anyhow = "1"
 base64 = "0.22"
 dirs = "6"
 serde = { version = "1", features = ["derive"] }
-tokio = { version = "1", features = ["io-util", "net", "rt", "sync", "time"] }
+tokio = { version = "1", features = ["io-util", "macros", "net", "rt", "sync", "time"] }

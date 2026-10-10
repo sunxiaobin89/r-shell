@@ -2,7 +2,7 @@
 
 /**
  * Verify that a release tag matches the project's declared version across all
- * four version files. Runs in CI before any release build starts so a
+ * five version files. Runs in CI before any release build starts so a
  * mis-tagged release fails fast instead of shipping mismatched artifacts
  * (same pattern used by openusage's publish workflow and tauri-action's
  * version checks).
@@ -53,8 +53,9 @@ function main() {
     contents = {
       packageJson: read('package.json'),
       cargoToml: read(path.join('src-tauri', 'Cargo.toml')),
-      cargoLock: read(path.join('src-tauri', 'Cargo.lock')),
-      tauriConf: read(path.join('src-tauri', 'tauri.conf.json'))
+      cargoLock: read('Cargo.lock'),
+      tauriConf: read(path.join('src-tauri', 'tauri.conf.json')),
+      workspaceToml: read('Cargo.toml')
     };
   } catch (error) {
     console.error(`Error: cannot read project version files under ${rootDir}: ${error.message}`);
@@ -70,7 +71,7 @@ function main() {
     console.error('Fix the version files (or the tag) before releasing.');
     process.exit(1);
   }
-  console.log(`OK: tag ${tag} matches package.json, Cargo.toml, Cargo.lock, tauri.conf.json`);
+  console.log(`OK: tag ${tag} matches all five version files`);
 }
 
 if (fileURLToPath(import.meta.url) === path.resolve(process.argv[1] || '')) {

@@ -61,8 +61,8 @@ pnpm build && pnpm tauri build
 # Frontend tests (Vitest)
 pnpm test
 
-# Rust tests
-cd src-tauri && cargo test
+# Rust tests (src-tauri is a workspace member; run from the repo root)
+cargo test --workspace
 
 # E2E tests
 pnpm test:e2e
@@ -92,7 +92,7 @@ pnpm run version:verify "v0.8.0-beta.1"
 # Evolution line / current channel (2.9.3 → 3.0.0-current.1; counter-only afterwards)
 pnpm run version:major -- --channel current
 ```
-- Script updates: package.json, Cargo.toml, Cargo.lock (root package entry, `cargo build` fallback), tauri.conf.json, CHANGELOG.md
+- Script updates: package.json, Cargo.toml (workspace root version), src-tauri/Cargo.toml, Cargo.lock (root package entry, `cargo build` fallback), src-tauri/tauri.conf.json, CHANGELOG.md
 - Auto-creates git commit with template CHANGELOG entry
 - Enforces preflight guardrails (version-drift + dirty-tree checks); `--dry-run` previews, `--yes` skips confirmation, `--force` bypasses guardrails
 - See `.github/skills/release-version/SKILL.md` for the full release guide (stable, tagged prereleases, and the `--channel current` evolution line)

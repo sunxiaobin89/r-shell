@@ -72,8 +72,8 @@ pnpm build && pnpm tauri build
 # Frontend unit tests (Vitest + jsdom)
 pnpm test
 
-# Rust unit tests
-cd src-tauri && cargo test
+# Rust unit tests (src-tauri is a workspace member; run from the repo root)
+cargo test --workspace
 
 # E2E tests
 pnpm test:e2e
@@ -114,11 +114,11 @@ pnpm run version:verify "v2.8.0-beta.1"   # check a tag matches every version fi
 pnpm run version:major -- --channel current   # 2.9.3 → 3.0.0-current.1 (evolution line)
 ```
 
-The bump script runs preflight guardrails (all four version files must agree; no uncommitted tracked changes) and supports `--dry-run` (preview without writing), `--yes` (skip confirmation), `--force` (bypass guardrails), `--no-commit`, and `--skip-changelog`.
+The bump script runs preflight guardrails (all five version files must agree; no uncommitted tracked changes) and supports `--dry-run` (preview without writing), `--yes` (skip confirmation), `--force` (bypass guardrails), `--no-commit`, and `--skip-changelog`.
 
 Stable releases tag as `vX.Y.Z` and publish as the GitHub **Latest** release; tagged prereleases tag as `vX.Y.Z-<id>.<n>` (e.g. `v0.8.0-beta.1`) and publish with `--prerelease`, never as Latest. The `--channel current` flag bumps the evolution line (`vX.Y.Z-current.<n>`: fixed base, counter continues from the existing `v<base>-current.*` git tags; only `major`/`minor`/`patch` bumps allowed) — those releases also publish as prereleases with their own `current.json` updater manifest, never touching `latest.json` or Homebrew. See `.github/skills/release-version/SKILL.md` for the full release procedure.
 
-Updates `package.json`, `Cargo.toml`, `Cargo.lock`, `tauri.conf.json`, `CHANGELOG.md` and creates a git commit.
+Updates `package.json`, `Cargo.toml` (workspace root version), `Cargo.lock`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, `CHANGELOG.md` and creates a git commit.
 
 ---
 

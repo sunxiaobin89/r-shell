@@ -197,6 +197,22 @@ export function parseCargoLockVersion(content) {
   return match[1];
 }
 
+/**
+ * Root workspace Cargo.toml -> "3.0.3". Crates that declare
+ * `version.workspace = true` (currently crates/rshell-net) inherit this, so it
+ * has to track the app version rather than drift on its own.
+ *
+ * @param {string} content
+ * @returns {string}
+ */
+export function parseWorkspaceVersion(content) {
+  const match = /^\[workspace\.package\][\s\S]*?^version = "([^"]+)"/m.exec(content);
+  if (!match) {
+    throw new Error('Cargo.toml has no "[workspace.package] version" entry');
+  }
+  return match[1];
+}
+
 /** tauri.conf.json -> "2.7.0". */
 export function parseTauriConfVersion(content) {
   const conf = JSON.parse(content);
@@ -209,12 +225,16 @@ export function parseTauriConfVersion(content) {
 /**
  * Collect the versions declared by every version file. Keys are the file
  * names; the package.json version is the source of truth.
+ *
+ * @param {{ packageJson: string, workspaceToml: string, cargoToml: string, cargoLock: string, tauriConf: string }} files
+ * @returns {Record<string, string>}
  */
-export function collectFileVersions({ packageJson, cargoToml, cargoLock, tauriConf }) {
+export function collectFileVersions({ packageJson, cargoToml, cargoLock, tauriConf, workspaceToml }) {
   return {
     'package.json': parsePackageJsonVersion(packageJson),
+    'Cargo.toml': parseWorkspaceVersion(workspaceToml),
     'src-tauri/Cargo.toml': parseCargoTomlVersion(cargoToml),
-    'src-tauri/Cargo.lock': parseCargoLockVersion(cargoLock),
+    'Cargo.lock': parseCargoLockVersion(cargoLock),
     'src-tauri/tauri.conf.json': parseTauriConfVersion(tauriConf)
   };
 }
@@ -235,15 +255,48 @@ export function findVersionDrift(versions) {
 // ---------------------------------------------------------------------------
 
 /**
- * Rewrite the version of the root "r-shell" package inside Cargo.lock.
- * Editing the root package entry directly is what `cargo set-version` does
- * and avoids a full `cargo build` just to refresh a lockfile. Throws when the
- * root package entry cannot be found (the CLI falls back to `cargo build`).
+ * Rewrite the version of every local package inside Cargo.lock. "Local" means
+ * the workspace members: their `[[package]]` block carries no `source` line,
+ * unlike registry/git dependencies. They are all released together, so editing
+ * only the root entry (what `cargo set-version` does) would leave the siblings
+ * stale — and the lockfile dirty on the very next cargo command. Throws when no
+ * local entry is found (the CLI falls back to `cargo build`).
+ *
+ * @param {string} content
+ * @param {string} newVersion
+ * @returns {string}
  */
 export function updateCargoLock(content, newVersion) {
-  const pattern = /^(name = "r-shell"\nversion = ")[^"]*(")/m;
+  let bumped = 0;
+  const updated = content
+    .split(/(?=\[\[package\]\])/)
+    .map((block) => {
+      if (!block.startsWith('[[package]]') || /^source = /m.test(block)) {
+        return block;
+      }
+      return block.replace(/(\[\[package\]\]\nname = "[^"]+"\nversion = ")[^"]*(")/, (_match, head, tail) => {
+        bumped += 1;
+        return `${head}${newVersion}${tail}`;
+      });
+    })
+    .join('');
+  if (bumped === 0) {
+    throw new Error('No local workspace package entry found in Cargo.lock');
+  }
+  return updated;
+}
+
+/**
+ * Rewrite the root workspace `[workspace.package] version` in place.
+ *
+ * @param {string} content
+ * @param {string} newVersion
+ * @returns {string}
+ */
+export function updateWorkspaceVersion(content, newVersion) {
+  const pattern = /(^\[workspace\.package\][\s\S]*?^version = ")[^"]*(")/m;
   if (!pattern.test(content)) {
-    throw new Error('Root "r-shell" package entry not found in Cargo.lock');
+    throw new Error('"[workspace.package] version" entry not found in Cargo.toml');
   }
   return content.replace(pattern, `$1${newVersion}$2`);
 }

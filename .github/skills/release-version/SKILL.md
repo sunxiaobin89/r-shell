@@ -74,15 +74,16 @@ pnpm run version:major -- --channel current   # 2.9.3 -> 3.0.0-current.1 (evolut
 ```
 
 The script enforces two **preflight guardrails** before touching anything (both bypassed with `--force` if you know what you are doing):
-1. **Version drift** — `package.json`, `Cargo.toml`, `Cargo.lock`, and `tauri.conf.json` must all agree on the current version.
+1. **Version drift** — `package.json`, `Cargo.toml` (workspace root), `src-tauri/Cargo.toml`, `Cargo.lock`, and `src-tauri/tauri.conf.json` must all agree on the current version.
 2. **Dirty tree** — no uncommitted *tracked* modifications (untracked files are fine), so the bump commit contains exactly the version change.
 
 If the working tree is dirty (e.g. you have uncommitted version-draft edits), the bump will refuse — commit/stash, or run with `--force`. Use `--yes` to skip the interactive confirmation (useful when driving the bump from an automated agent).
 
-This updates **all four** version locations atomically and creates a git commit:
+This updates **all five** version locations and creates a git commit:
 - `package.json`
+- `Cargo.toml` (workspace root — crates declaring `version.workspace = true` inherit it)
 - `src-tauri/Cargo.toml`
-- `src-tauri/Cargo.lock`
+- `Cargo.lock`
 - `src-tauri/tauri.conf.json`
 - `CHANGELOG.md` (adds a skeleton section — for prerelease/stable/current-channel bumps it renames the existing release-line section instead of adding duplicates)
 

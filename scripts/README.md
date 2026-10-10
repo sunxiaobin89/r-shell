@@ -38,7 +38,7 @@ node scripts/bump-version.mjs minor --channel current   # evolution line (3.0.0-
 - ✅ Automatic git commit
 - ✅ CHANGELOG.md template generation (inserts a section, or renames the release-line section on prerelease/stable/current-channel bumps)
 - ✅ Stable (`major`/`minor`/`patch`), tagged prerelease (`prerelease`/`stable`), and evolution-line (`--channel current`) bumps
-- ✅ Cargo.lock updated by rewriting the root package entry (no full `cargo build` needed; falls back to `cargo build` and verifies the result)
+- ✅ `Cargo.lock` (repo root) and the workspace `Cargo.toml` updated by rewriting their version entries directly — every local package in the lock, not just the root (no full `cargo build` needed; falls back to `cargo build`)
 
 ### Bump Types
 
@@ -59,7 +59,7 @@ For `prerelease` / `stable`, the CHANGELOG section for the release line is **ren
 
 ### verify-release-tag.mjs
 
-Checks that a release tag matches the version declared in `package.json`, `Cargo.toml`, `Cargo.lock`, and `tauri.conf.json`. Used by the Release workflow (`validate-tag` job) as a cheap failsafe before any build starts; also handy locally before tagging.
+Checks that a release tag matches the version declared in `package.json`, `Cargo.toml` (workspace root), `src-tauri/Cargo.toml`, `Cargo.lock`, and `src-tauri/tauri.conf.json`. Used by the Release workflow (`validate-tag` job) as a cheap failsafe before any build starts; also handy locally before tagging.
 
 ```bash
 node scripts/verify-release-tag.mjs v2.8.0
@@ -102,7 +102,7 @@ Accepts `vX.Y.Z` and `vX.Y.Z-<prerelease>` tags; rejects build metadata and malf
 The bash script (`bump-version.sh`) supports `--no-commit` and `--skip-changelog` only.
 
 > ⚠️ `bump-version.mjs` runs two preflight checks before touching anything:
-> 1. **Version drift** — all four version files must agree on the current version.
+> 1. **Version drift** — all five version files must agree on the current version.
 > 2. **Dirty tree** — no uncommitted *tracked* modifications (untracked files are fine).
 > Both fail the bump with a clear message unless you pass `--force`.
 
@@ -111,10 +111,11 @@ The bash script (`bump-version.sh`) supports `--no-commit` and `--skip-changelog
 When you run a version bump script, it automatically updates:
 
 1. **package.json** - Frontend package version
-2. **src-tauri/Cargo.toml** - Rust package version
-3. **src-tauri/Cargo.lock** - Root package version (edited directly when possible, `cargo build` fallback)
-4. **src-tauri/tauri.conf.json** - Tauri app version
-5. **CHANGELOG.md** - New version section (unless `--skip-changelog`)
+2. **Cargo.toml** (workspace root) - Version inherited by crates declaring `version.workspace = true`
+3. **src-tauri/Cargo.toml** - Rust package version
+4. **Cargo.lock** - Root package version (edited directly when possible, `cargo build` fallback)
+5. **src-tauri/tauri.conf.json** - Tauri app version
+6. **CHANGELOG.md** - New version section (unless `--skip-changelog`)
 
 ## Usage Examples
 

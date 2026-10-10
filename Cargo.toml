@@ -2,14 +2,45 @@
 # Phase 0 groundwork: prepare the backend for extraction into shared crates
 # so the Tauri shell and a future GPUI shell can both depend on them.
 #
-# This file currently only registers the existing Tauri package. No code has
-# moved yet — the point is to prove the workspace layout does not break the
-# Tauri build before anything is reshuffled. Extracted crates will be added
-# under crates/ as they land.
+# The first extracted crate is crates/rshell-net — connection primitives
+# (proxy transport and remote key path resolution) that depend on neither
+# Tauri nor the rest of the backend, so a GPUI shell can consume the same
+# code rather than a copy. Further crates land under crates/ the same way.
 members = ["src-tauri", "crates/rshell-net"]
 resolver = "2"
 
 [workspace.package]
-version = "3.0.0"
+version = "3.0.3"
 edition = "2021"
 license = "MIT"
+
+# ---------------------------------------------------------------------------
+# Profiles must live at the workspace root: cargo ignores `[profile.*]` declared
+# in a member package, so leaving these in src-tauri/Cargo.toml would silently
+# drop the release tuning from every build.
+# ---------------------------------------------------------------------------
+
+[profile.release]
+opt-level = 3          # Maximum optimization
+lto = true             # Link-time optimization
+codegen-units = 1      # Better optimization, slower compile
+strip = true           # Strip debug symbols
+panic = "abort"        # Smaller binary size
+
+[profile.dev]
+opt-level = 0          # No optimization for faster compile
+debug = true           # Include debug info
+
+# Keep dependencies optimized in dev builds: at opt-level 0 the SSH crypto
+# stack caps transfer throughput at a few MB/s no matter how fast the
+# transfer engine is. The r-shell crate itself stays unoptimized, so
+# incremental rebuilds during `pnpm tauri dev` remain fast.
+[profile.dev.package."*"]
+opt-level = 3
+
+# Optional: Super optimized release
+[profile.release-optimized]
+inherits = "release"
+opt-level = "z"        # Optimize for size
+lto = "fat"            # Aggressive LTO
+codegen-units = 1

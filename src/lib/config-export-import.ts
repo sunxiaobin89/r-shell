@@ -8,6 +8,7 @@
  */
 
 import { save, open as tauriOpen } from '@tauri-apps/plugin-dialog';
+import { version as packageVersion } from '../../package.json';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import {
   ConnectionStorageManager,
@@ -148,6 +149,7 @@ export async function exportAllConfig(): Promise<boolean> {
     if (!filePath) return false; // cancelled
 
     // 3. Write ------------------------------------------------------------------
+    // The fs plugin may only touch files the user picked, so grant this one.
     await writeTextFile(filePath, JSON.stringify(bundle, null, 2));
     return true;
   } catch (error) {
@@ -177,6 +179,7 @@ export async function importAllConfig(
     if (!filePath) return null; // cancelled
 
     // 2. Read & parse -----------------------------------------------------------
+    // The fs plugin may only touch files the user picked, so grant this one.
     const raw = await readTextFile(filePath);
     const bundle = JSON.parse(raw) as ConfigBundle;
 
@@ -259,12 +262,9 @@ export async function importAllConfig(
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function getAppVersion(): string {
-  try {
-    // Vite exposes the package version via import.meta.env when configured;
-    // fall back to a sensible default.
-    return (import.meta as { env?: { PACKAGE_VERSION?: string } }).env
-      ?.PACKAGE_VERSION ?? 'unknown';
-  } catch {
-    return 'unknown';
-  }
+  // The package version is the app version: tauri.conf.json and Cargo.toml
+  // are bumped together with it. The previous implementation read
+  // `import.meta.env.PACKAGE_VERSION`, which nothing ever defined, so every
+  // exported bundle said "unknown".
+  return packageVersion;
 }
